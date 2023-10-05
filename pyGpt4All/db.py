@@ -40,7 +40,7 @@ class DiscussionsDB:
                         )
                     """)
             except Exception:
-                discussion_table_exist=True        
+                discussion_table_exist=True
             try:
                 cursor.execute("""
                         CREATE TABLE message (
@@ -61,13 +61,7 @@ class DiscussionsDB:
             # Get the current version from the schema_version table
             cursor.execute("SELECT version FROM schema_version WHERE id = 1")
             row = cursor.fetchone()
-            if row is None:
-                # If the table is empty, assume version 0
-                version = 0
-            else:
-                # Otherwise, use the version from the table
-                version = row[0]
-
+            version = 0 if row is None else row[0]
             # Upgrade the schema to version 1
             if version < 1:
                 print(f"Upgrading schema to version {db_version}...")
@@ -89,7 +83,10 @@ class DiscussionsDB:
             if not schema_table_exist:
                 cursor.execute(f"INSERT INTO schema_version (id, version) VALUES (1, {db_version})")
             else:
-                cursor.execute(f"UPDATE schema_version SET version=? WHERE id=?",(db_version,1))
+                cursor.execute(
+                    "UPDATE schema_version SET version=? WHERE id=?",
+                    (db_version, 1),
+                )
 
             conn.commit()
 
@@ -100,14 +97,8 @@ class DiscussionsDB:
         Returns the cursor object for further processing.
         """
         with sqlite3.connect(self.db_path) as conn:
-            if params is None:
-                cursor = conn.execute(query)
-            else:
-                cursor = conn.execute(query, params)
-            if fetch_all:
-                return cursor.fetchall()
-            else:
-                return cursor.fetchone()
+            cursor = conn.execute(query) if params is None else conn.execute(query, params)
+            return cursor.fetchall() if fetch_all else cursor.fetchone()
             
 
     def delete(self, query, params=None):
@@ -168,7 +159,9 @@ class DiscussionsDB:
         Returns:
             Discussion: A Discussion instance 
         """
-        discussion_id = self.insert(f"INSERT INTO discussion (title) VALUES (?)",(title,))
+        discussion_id = self.insert(
+            "INSERT INTO discussion (title) VALUES (?)", (title,)
+        )
         return Discussion(discussion_id, self)
 
     def build_discussion(self, discussion_id=0):
@@ -199,7 +192,9 @@ class DiscussionsDB:
         for row in db_discussions:
             discussion_id = row[0]
             discussion = {"id": discussion_id, "messages": []}
-            rows = self.select(f"SELECT * FROM message WHERE discussion_id=?",(discussion_id))
+            rows = self.select(
+                "SELECT * FROM message WHERE discussion_id=?", discussion_id
+            )
             for message_row in rows:
                 discussion["messages"].append(
                     {"sender": message_row[1], "content": message_row[2]}
@@ -223,11 +218,10 @@ class Discussion:
         Returns:
             int: The added message id
         """
-        message_id = self.discussions_db.insert(
-            "INSERT INTO message (sender, content, type, rank, parent, discussion_id) VALUES (?, ?, ?, ?, ?, ?)", 
-            (sender, content, message_type, rank, parent, self.discussion_id)
+        return self.discussions_db.insert(
+            "INSERT INTO message (sender, content, type, rank, parent, discussion_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (sender, content, message_type, rank, parent, self.discussion_id),
         )
-        return message_id
 
     def rename(self, new_title):
         """Renames the discussion
@@ -236,7 +230,8 @@ class Discussion:
             new_title (str): The nex discussion name
         """
         self.discussions_db.update(
-            f"UPDATE discussion SET title=? WHERE id=?",(new_title,self.discussion_id)
+            "UPDATE discussion SET title=? WHERE id=?",
+            (new_title, self.discussion_id),
         )
 
     def delete_discussion(self):
@@ -269,7 +264,8 @@ class Discussion:
             new_content (str): The nex message content
         """
         self.discussions_db.update(
-            f"UPDATE message SET content = ? WHERE id = ?",(new_content,message_id)
+            "UPDATE message SET content = ? WHERE id = ?",
+            (new_content, message_id),
         )
     
     def message_rank_up(self, message_id):
@@ -282,9 +278,9 @@ class Discussion:
         current_rank = self.discussions_db.select("SELECT rank FROM message WHERE id=?", (message_id,),False)[0]
 
         # Increment current rank value by 1
-        new_rank = current_rank + 1        
+        new_rank = current_rank + 1
         self.discussions_db.update(
-            f"UPDATE message SET rank = ? WHERE id = ?",(new_rank,message_id)
+            "UPDATE message SET rank = ? WHERE id = ?", (new_rank, message_id)
         )
         return new_rank
 
@@ -298,9 +294,9 @@ class Discussion:
         current_rank = self.discussions_db.select("SELECT rank FROM message WHERE id=?", (message_id,),False)[0]
 
         # Increment current rank value by 1
-        new_rank = current_rank - 1        
+        new_rank = current_rank - 1
         self.discussions_db.update(
-            f"UPDATE message SET rank = ? WHERE id = ?",(new_rank,message_id)
+            "UPDATE message SET rank = ? WHERE id = ?", (new_rank, message_id)
         )
         return new_rank
     
