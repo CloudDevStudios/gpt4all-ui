@@ -164,10 +164,7 @@ class Gpt4AllWebUI(GPT4AllAPI):
     def format_message(self, message):
         # Look for a code block within the message
         pattern = re.compile(r"(```.*?```)", re.DOTALL)
-        match = pattern.search(message)
-
-        # If a code block is found, replace it with a <code> tag
-        if match:
+        if match := pattern.search(message):
             code_block = match.group(1)
             message = message.replace(code_block, f"<code>{code_block[3:-3]}</code>")
 
@@ -212,8 +209,7 @@ class Gpt4AllWebUI(GPT4AllAPI):
         while self.generating:
             try:
                 while not self.text_queue.empty():
-                    value = self.text_queue.get(False)
-                    yield value#.replace("\n","<br>")
+                    yield self.text_queue.get(False)
             except :
                 time.sleep(0.1)
 
@@ -221,7 +217,7 @@ class Gpt4AllWebUI(GPT4AllAPI):
         self.full_message_list.append(self.bot_says)
         bot_says = markdown.markdown(self.bot_says)
 
-        yield "FINAL:"+bot_says
+        yield f"FINAL:{bot_says}"
         return bot_says
 
     def bot(self):
@@ -272,15 +268,14 @@ class Gpt4AllWebUI(GPT4AllAPI):
         if "id" in data:
             discussion_id = data["id"]
             self.current_discussion = Discussion(discussion_id, self.db)
+        elif self.current_discussion is None:
+            self.current_discussion = self.db.create_discussion()
+
         else:
-            if self.current_discussion is not None:
-                discussion_id = self.current_discussion.discussion_id
-                self.current_discussion = Discussion(discussion_id, self.db)
-            else:
-                self.current_discussion = self.db.create_discussion()
-        
+            discussion_id = self.current_discussion.discussion_id
+            self.current_discussion = Discussion(discussion_id, self.db)
         messages = self.current_discussion.get_messages()
-        
+
         return jsonify(messages)
 
     def delete_discussion(self):
@@ -456,9 +451,9 @@ if __name__ == "__main__":
     # so we have to make a copy that is not comitted
     if args.config=="default":
         args.config = "local_default"
-        if not Path(f"configs/local_default.yaml").exists():
+        if not Path("configs/local_default.yaml").exists():
             print("No local configuration file found. Building from scratch")
-            shutil.copy(f"configs/default.yaml", f"configs/local_default.yaml")
+            shutil.copy("configs/default.yaml", "configs/local_default.yaml")
     config_file_path = f"configs/{args.config}.yaml"
     config = load_config(config_file_path)
 
